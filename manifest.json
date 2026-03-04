@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "HueLoot",
+  "version": "1.0.0",
+  "description": "Extract all unique colors from any webpage with one click.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "clipboardWrite"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "HueLoot – Extract Colors",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [],
+  "web_accessible_resources": [
+    {
+      "resources": ["modal.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

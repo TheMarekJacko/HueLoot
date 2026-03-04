@@ -1,0 +1,14 @@
+{
+  "name": "hueloot",
+  "version": "1.0.0",
+  "description": "Extract all unique colors from any webpage with one click.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint *.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0"
+  }
+}

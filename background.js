@@ -3,7 +3,12 @@
 
 chrome.action.onClicked.addListener(async (tab) => {
   // Guard: only run on http/https pages
-  if (!tab.url || !/^https?:\/\//.test(tab.url)) return;
+  if (!tab.url || !/^https?:\/\//.test(tab.url)) {
+    chrome.action.setBadgeText({ text: "!", tabId: tab.id });
+    chrome.action.setBadgeBackgroundColor({ color: "#e57373", tabId: tab.id });
+    setTimeout(() => chrome.action.setBadgeText({ text: "", tabId: tab.id }), 2000);
+    return;
+  }
 
   try {
     // Inject the CSS first so the modal is styled before JS runs
@@ -17,7 +22,12 @@ chrome.action.onClicked.addListener(async (tab) => {
       target: { tabId: tab.id },
       files: ["content.js"],
     });
+
+    chrome.action.setBadgeText({ text: "", tabId: tab.id });
   } catch (err) {
     console.error("[HueLoot] Injection error:", err);
+    chrome.action.setBadgeText({ text: "ERR", tabId: tab.id });
+    chrome.action.setBadgeBackgroundColor({ color: "#e57373", tabId: tab.id });
+    setTimeout(() => chrome.action.setBadgeText({ text: "", tabId: tab.id }), 3000);
   }
 });

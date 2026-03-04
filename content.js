@@ -258,6 +258,8 @@
 
   // ── Entry point ──────────────────────────────────────────────────────────
 
+  if (!document.body) return;
+
   const colors = gatherAllColors();
   const overlay = buildModal(colors);
   document.body.appendChild(overlay);

@@ -1,10 +1,10 @@
 // HueLoot – content script
 // Extracts colors from the page and renders a modal overlay.
 
-(() => {
+(async () => {
   // ── Idempotency guard ────────────────────────────────────────────────────
-  if (document.getElementById("hueloot-overlay")) {
-    document.getElementById("hueloot-overlay").remove();
+  if (document.getElementById("hueloot-shadow-host")) {
+    document.getElementById("hueloot-shadow-host").remove();
     return;
   }
 
@@ -53,6 +53,70 @@
     );
   }
 
+  // ── Random title messages ─────────────────────────────────────────────────
+
+  const MESSAGES = [
+    // Confused energy
+    "{n} colors. Is this normal?",
+    "Wait, {n} colors? How did we get here?",
+    "{n} colors found. I'm still not sure how this works.",
+    "Uhh, {n} colors? That seems like a lot actually.",
+    "Hold on, {n} different colors? On THIS page?",
+    "So we're just collecting colors now? Found {n}.",
+    "{n} colors. This is either genius or chaos.",
+    "{n} colors unearthed. My brain hurts a little.",
+    "{n} colors??? On THIS website???",
+    "I found {n} colors. Don't ask me how.",
+    "{n} colors. Why am I surprised by this?",
+    "{n} colors. What even is a webpage anymore.",
+    // Sarcastic
+    "Oh wow, {n} whole colors. Groundbreaking.",
+    "Designer used {n} colors. Bold choice.",
+    "{n} colors found. Seriously?",
+    "Someone spent hours picking these {n} colors.",
+    "{n} colors. Hope you know what you're doing.",
+    "{n} colors on one page? Sir, this is a website.",
+    "Whoever designed this used {n} colors. Just saying.",
+    "{n} colors. The client asked for \"just a few tweaks\".",
+    "{n} colors detected. Designer needs a nap.",
+    "{n} colors. Cool cool cool. Totally intentional.",
+    "Ah yes, {n} colors. Very subtle design choices.",
+    "{n} colors. Someone had fun with the color picker.",
+    "{n} colors found. The designer has left the building.",
+    // Short & punchy
+    "{n} colors. Boom.",
+    "That's {n} colors, baby.",
+    "{n} colors. Go wild.",
+    "Yoink. {n} colors.",
+    "{n} colors. No cap.",
+    "{n} colors. Let's go.",
+    "{n} colors secured. \uD83D\uDD12",
+    "Boom. {n} colors. Done.",
+    "{n} colors. You're up.",
+    "Fresh. {n} colors. Yours.",
+    "{n} colors. Take 'em.",
+    "Got 'em. All {n}.",
+    "{n} colors. Easy money.",
+    // Encouragement
+    "{n} colors ready for you, champ.",
+    "Go on, take all {n}. You deserve it.",
+    "{n} colors. You absolute legend.",
+    "Fresh batch of {n} colors. Just for you.",
+    "{n} colors. Now go build something beautiful.",
+    "{n} colors. You've got this.",
+    "Look at you, extracting {n} colors like a pro.",
+    "{n} colors on a plate. You're welcome, superstar.",
+    "{n} colors found. Your future self thanks you.",
+    "{n} colors. Go make something they'll remember.",
+    "{n} colors. The world is yours.",
+    "Honestly? {n} colors. Not bad at all.",
+  ];
+
+  function randomTitle(n) {
+    const msg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+    return "HueLoot — " + msg.replace("{n}", n);
+  }
+
   // ── Color extraction ─────────────────────────────────────────────────────
 
   const STYLE_PROPS = [
@@ -73,6 +137,8 @@
     const elements = document.querySelectorAll("*");
     elements.forEach((el) => {
       const cs = window.getComputedStyle(el);
+      // Skip elements that aren't visible
+      if (cs.display === "none" || cs.visibility === "hidden" || parseFloat(cs.opacity) === 0) return;
       STYLE_PROPS.forEach((prop) => {
         const hex = toHex(cs[prop]);
         if (hex) colors.add(hex);
@@ -87,42 +153,9 @@
     return colors;
   }
 
-  function extractFromStylesheets() {
-    const colors = new Set();
-    const colorRegex = /#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)/g;
-
-    Array.from(document.styleSheets).forEach((sheet) => {
-      let rules;
-      try { rules = sheet.cssRules; } catch { return; } // cross-origin
-      if (!rules) return;
-      Array.from(rules).forEach((rule) => {
-        if (!rule.cssText) return;
-        const matches = rule.cssText.match(colorRegex);
-        if (matches) matches.forEach((c) => { const h = toHex(c); if (h) colors.add(h); });
-      });
-    });
-    return colors;
-  }
-
-  function extractFromInlineStyles() {
-    const colors = new Set();
-    const colorRegex = /#[0-9a-fA-F]{3,8}|rgba?\([^)]+\)|hsla?\([^)]+\)/g;
-    document.querySelectorAll("[style]").forEach((el) => {
-      const matches = el.getAttribute("style").match(colorRegex);
-      if (matches) matches.forEach((c) => { const h = toHex(c); if (h) colors.add(h); });
-    });
-    return colors;
-  }
-
   function gatherAllColors() {
-    const all = new Set([
-      ...extractFromComputedStyles(),
-      ...extractFromStylesheets(),
-      ...extractFromInlineStyles(),
-    ]);
-
     // Sort by hue for a pleasant palette-like order
-    return [...all].sort((a, b) => {
+    return [...extractFromComputedStyles()].sort((a, b) => {
       const ha = hexToHsl(a), hb = hexToHsl(b);
       if (ha.h !== hb.h) return ha.h - hb.h;
       if (ha.s !== hb.s) return hb.s - ha.s;
@@ -162,6 +195,22 @@
     return luminance(hex) > 0.35 ? "#111111" : "#ffffff";
   }
 
+  // ── Swatch factory ──────────────────────────────────────────────────────
+
+  function createSwatch(hex) {
+    const swatch = document.createElement("button");
+    swatch.className = "hueloot-swatch";
+    swatch.title = `Copy ${hex}`;
+    swatch.style.backgroundColor = hex;
+    const label = document.createElement("span");
+    label.className = "hueloot-swatch-label";
+    label.style.color = labelColor(hex);
+    label.textContent = hex;
+    swatch.appendChild(label);
+    swatch.addEventListener("click", () => copyColor(hex, label));
+    return swatch;
+  }
+
   // ── Modal construction ───────────────────────────────────────────────────
 
   function buildModal(colors) {
@@ -177,7 +226,12 @@
 
     const title = document.createElement("span");
     title.id = "hueloot-title";
-    title.textContent = `HueLoot — ${colors.length} color${colors.length !== 1 ? "s" : ""} found`;
+    title.textContent = randomTitle(colors.length);
+
+    const infoBtn = document.createElement("button");
+    infoBtn.id = "hueloot-info-btn";
+    infoBtn.setAttribute("aria-label", "How colors are extracted");
+    infoBtn.textContent = "ⓘ";
 
     const closeBtn = document.createElement("button");
     closeBtn.id = "hueloot-close";
@@ -185,8 +239,115 @@
     closeBtn.textContent = "✕";
     closeBtn.addEventListener("click", () => overlay.remove());
 
+    const controls = document.createElement("div");
+    controls.id = "hueloot-controls";
+    controls.appendChild(infoBtn);
+    controls.appendChild(closeBtn);
+
     header.appendChild(title);
-    header.appendChild(closeBtn);
+    header.appendChild(controls);
+
+    // Info panel
+    const infoPanel = document.createElement("div");
+    infoPanel.id = "hueloot-info-panel";
+
+    // Left: How it works
+    const howSection = document.createElement("div");
+    howSection.id = "hueloot-how-section";
+
+    const howHeading = document.createElement("p");
+    howHeading.id = "hueloot-how-heading";
+    howHeading.textContent = "How it works";
+
+    const howBody = document.createElement("div");
+    howBody.id = "hueloot-how-body";
+
+    const p1 = document.createElement("p");
+    p1.innerHTML = 'Colors come from <strong>computed styles of visible elements</strong> — what the browser has actually resolved and rendered. For each element that isn’t <code>display:none</code>, <code>visibility:hidden</code>, or <code>opacity:0</code>, it reads:';
+
+    const ul = document.createElement("ul");
+    [
+      '<code>color</code> (text) &amp; <code>backgroundColor</code>',
+      'Border colors (top / right / bottom / left)',
+      '<code>outlineColor</code>, <code>textDecorationColor</code>, <code>caretColor</code>, <code>columnRuleColor</code>',
+      'Colors inside <code>backgroundImage</code> gradients',
+    ].forEach((html) => { const li = document.createElement("li"); li.innerHTML = html; ul.appendChild(li); });
+
+    const p2 = document.createElement("p");
+    p2.innerHTML = 'You may still see “invisible” colors — the filter skips the three above, but not zero-sized, off-screen, or <code>overflow:hidden</code>-clipped elements. These are technically visible to the browser even if you can’t see them.';
+
+    howBody.appendChild(p1);
+    howBody.appendChild(ul);
+    howBody.appendChild(p2);
+
+    howSection.appendChild(howHeading);
+    howSection.appendChild(howBody);
+
+    // Right: Creator card
+    const creatorSection = document.createElement("div");
+    creatorSection.id = "hueloot-creator";
+
+    const avatar = document.createElement("img");
+    avatar.id = "hueloot-avatar";
+    avatar.src = chrome.runtime.getURL("avatar.png");
+    avatar.alt = "Marek Jacko";
+    avatar.onerror = () => { avatar.style.display = "none"; };
+
+    const createdByLabel = document.createElement("span");
+    createdByLabel.id = "hueloot-created-by";
+    createdByLabel.textContent = "Created by";
+
+    const creatorName = document.createElement("span");
+    creatorName.id = "hueloot-creator-name";
+    creatorName.textContent = "Marek Jacko";
+
+    const creatorRole = document.createElement("span");
+    creatorRole.id = "hueloot-creator-role";
+    creatorRole.textContent = "Agentic Systems Engineer";
+
+    const linkBlockPersonal = document.createElement("div");
+    linkBlockPersonal.className = "hueloot-link-block";
+    const linkPersonal = document.createElement("a");
+    linkPersonal.className = "hueloot-creator-link";
+    linkPersonal.href = "https://jackoai.com";
+    linkPersonal.target = "_blank";
+    linkPersonal.rel = "noopener noreferrer";
+    linkPersonal.textContent = "jackoai.com";
+    const descPersonal = document.createElement("span");
+    descPersonal.className = "hueloot-link-desc";
+    descPersonal.textContent = "Personal practice & agentic engineering";
+    linkBlockPersonal.appendChild(linkPersonal);
+    linkBlockPersonal.appendChild(descPersonal);
+
+    const linkBlockShadow = document.createElement("div");
+    linkBlockShadow.className = "hueloot-link-block";
+    const linkShadow = document.createElement("a");
+    linkShadow.className = "hueloot-creator-link";
+    linkShadow.id = "hueloot-link-shadow";
+    linkShadow.href = "https://myshadowwriter.com";
+    linkShadow.target = "_blank";
+    linkShadow.rel = "noopener noreferrer";
+    linkShadow.textContent = "myshadowwriter.com ✨";
+    const descShadow = document.createElement("span");
+    descShadow.className = "hueloot-link-desc";
+    descShadow.textContent = "Love reading fiction? You\'ll love this app.";
+    linkBlockShadow.appendChild(linkShadow);
+    linkBlockShadow.appendChild(descShadow);
+
+    creatorSection.appendChild(avatar);
+    creatorSection.appendChild(createdByLabel);
+    creatorSection.appendChild(creatorName);
+    creatorSection.appendChild(creatorRole);
+    creatorSection.appendChild(linkBlockPersonal);
+    creatorSection.appendChild(linkBlockShadow);
+
+    infoPanel.appendChild(howSection);
+    infoPanel.appendChild(creatorSection);
+
+    infoBtn.addEventListener("click", () => {
+      const open = infoPanel.classList.toggle("hueloot-info-open");
+      infoBtn.classList.toggle("hueloot-info-active", open);
+    });
 
     // Grid
     const grid = document.createElement("div");
@@ -198,24 +359,46 @@
       empty.textContent = "No colors detected on this page.";
       grid.appendChild(empty);
     } else {
-      colors.forEach((hex) => {
-        const swatch = document.createElement("button");
-        swatch.className = "hueloot-swatch";
-        swatch.title = `Copy ${hex}`;
-        swatch.style.backgroundColor = hex;
+      colors.forEach((hex) => grid.appendChild(createSwatch(hex)));
 
-        const label = document.createElement("span");
-        label.className = "hueloot-swatch-label";
-        label.style.color = labelColor(hex);
-        label.textContent = hex;
+      // ── EyeDropper picker card ──────────────────────────────────────────
+      if (window.EyeDropper) {
+        const pickerCard = document.createElement("button");
+        pickerCard.className = "hueloot-swatch hueloot-picker-card";
+        pickerCard.title = "Pick a color from the page";
 
-        swatch.appendChild(label);
-        swatch.addEventListener("click", () => copyColor(hex, label));
-        grid.appendChild(swatch);
-      });
+        const icon = document.createElement("span");
+        icon.className = "hueloot-picker-icon";
+        icon.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8-3 3"/></svg>`;
+
+        const pickerLabel = document.createElement("span");
+        pickerLabel.className = "hueloot-picker-label";
+        pickerLabel.textContent = "Pick color";
+
+        pickerCard.appendChild(icon);
+        pickerCard.appendChild(pickerLabel);
+
+        pickerCard.addEventListener("click", async () => {
+          overlay.style.display = "none";
+          try {
+            const { sRGBHex } = await new EyeDropper().open();
+            const hex = sRGBHex.toLowerCase();
+            overlay.style.display = "";
+            const newSwatch = createSwatch(hex);
+            grid.insertBefore(newSwatch, pickerCard);
+            copyColor(hex, newSwatch.querySelector(".hueloot-swatch-label"));
+          } catch {
+            // User cancelled — just restore the modal
+            overlay.style.display = "";
+          }
+        });
+
+        grid.appendChild(pickerCard);
+      }
     }
 
     modal.appendChild(header);
+    modal.appendChild(infoPanel);
     modal.appendChild(grid);
     overlay.appendChild(modal);
 
@@ -262,5 +445,22 @@
 
   const colors = gatherAllColors();
   const overlay = buildModal(colors);
-  document.body.appendChild(overlay);
+
+  // Build shadow host but don’t add to DOM yet
+  const shadowHost = document.createElement("div");
+  shadowHost.id = "hueloot-shadow-host";
+  shadowHost.style.cssText = "all:initial;position:fixed;top:0;left:0;z-index:2147483647;";
+
+  const shadow = shadowHost.attachShadow({ mode: "open" });
+
+  // Fetch CSS and inject as <style> so it’s ready before the host is visible
+  const cssText = await fetch(chrome.runtime.getURL("modal.css")).then(r => r.text());
+  const style = document.createElement("style");
+  style.textContent = cssText;
+  shadow.appendChild(style);
+  shadow.appendChild(overlay);
+
+  // Mount fully-styled modal in one paint — no flash
+  document.body.appendChild(shadowHost);
+  overlay.remove = () => shadowHost.remove();
 })();

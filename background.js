@@ -11,13 +11,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 
   try {
-    // Inject the CSS first so the modal is styled before JS runs
-    await chrome.scripting.insertCSS({
-      target: { tabId: tab.id },
-      files: ["modal.css"],
-    });
-
-    // Inject (or re-inject) the content script
+    // CSS is now loaded inside the Shadow DOM — only inject the content script
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ["content.js"],

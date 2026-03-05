@@ -5,6 +5,7 @@
   "description": "Extract all unique colors from any webpage with one click.",
   "permissions": [
     "activeTab",
+    "tabs",
     "scripting",
     "clipboardWrite"
   ],
@@ -29,7 +30,7 @@
   "content_scripts": [],
   "web_accessible_resources": [
     {
-      "resources": ["modal.css"],
+      "resources": ["modal.css", "avatar.png"],
       "matches": ["<all_urls>"]
     }
   ]

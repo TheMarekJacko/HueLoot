@@ -24,3 +24,10 @@ Colors come from **computed styles of visible elements** — meaning what the br
 - Colors inside `backgroundImage` gradients
 
 You may still see colors that feel "invisible" — the filter skips `display:none`, `visibility:hidden`, and `opacity:0`, but not zero-sized elements, off-screen elements, elements covered by others, or elements clipped by `overflow:hidden`. These are technically "visible" to the browser even if you can't see them.
+
+## Maker
+
+For years I used some old clunky color picker tool. One day it stopped working. I could have just found another one. Instead I built HueLoot. Here you are. Enjoy.
+
+— Marek
+marek@jackoai.com
